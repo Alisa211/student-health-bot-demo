@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Health & Wellness Companion</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind Config for Custom Palette -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        stone: {
+                            50: '#fafaf9',
+                            100: '#f5f5f4',
+                            200: '#e7e5e4',
+                            300: '#d6d3d1',
+                            600: '#57534e',
+                            800: '#292524',
+                            900: '#1c1917',
+                        },
+                        sage: {
+                            100: '#eef3ef',
+                            500: '#84a98c',
+                            600: '#52796f',
+                            700: '#354f52',
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom scrollbar for chat area */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Chart Container Strict Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            height: 300px;
+            margin: 0 auto;
+        }
+        
+        /* Specific smaller container for chat charts */
+        .chat-chart-wrapper {
+            position: relative;
+            width: 100%;
+            height: 200px;
+        }
+
+        @media (min-width: 1024px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans antialiased h-screen overflow-hidden flex flex-col">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-view" class="fixed inset-0 z-50 bg-stone-100 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-stone-200">
+            <div class="text-center mb-8">
+                <div class="text-4xl mb-2">🌿</div>
+                <h1 class="text-3xl font-serif font-bold text-sage-700">Student Health Hub</h1>
+                <p class="text-stone-500 mt-2">Your personal wellness companion</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-stone-600 mb-1">Student Email</label>
+                    <input type="email" id="login-email" value="student@university.edu" class="w-full px-4 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-sage-500 focus:border-sage-500 outline-none transition bg-stone-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-stone-600 mb-1">Password</label>
+                    <input type="password" id="login-password" value="password" class="w-full px-4 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-sage-500 focus:border-sage-500 outline-none transition bg-stone-50">
+                </div>
+                <button onclick="app.login()" class="w-full bg-sage-600 hover:bg-sage-700 text-white font-bold py-3 rounded-lg transition transform active:scale-95 shadow-md">
+                    Access Wellness Portal
+                </button>
+            </div>
+            <p class="mt-6 text-xs text-center text-stone-400">Secure • Private • Confidential</p>
+        </div>
+    </div>
+
+    <!-- MAIN APP LAYOUT (Hidden by default) -->
+    <div id="app-view" class="hidden flex-1 flex overflow-hidden">
+        
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="w-20 lg:w-64 bg-white border-r border-stone-200 flex flex-col justify-between hidden md:flex transition-all duration-300">
+            <div>
+                <div class="h-20 flex items-center justify-center lg:justify-start lg:px-6 border-b border-stone-100">
+                    <span class="text-2xl mr-0 lg:mr-3">🌿</span>
+                    <span class="font-serif font-bold text-sage-700 text-xl hidden lg:block">HealthBot</span>
+                </div>
+                
+                <nav class="mt-6 space-y-1 px-2">
+                    <button onclick="app.nav('dashboard')" id="nav-dashboard" class="w-full flex items-center px-2 lg:px-4 py-3 text-stone-600 hover:bg-sage-100 hover:text-sage-700 rounded-lg transition group nav-btn active-nav">
+                        <span class="text-xl">📊</span>
+                        <span class="ml-3 font-medium hidden lg:block">Dashboard</span>
+                    </button>
+                    <button onclick="app.nav('chat')" id="nav-chat" class="w-full flex items-center px-2 lg:px-4 py-3 text-stone-600 hover:bg-sage-100 hover:text-sage-700 rounded-lg transition group nav-btn">
+                        <span class="text-xl">💬</span>
+                        <span class="ml-3 font-medium hidden lg:block">Health Assistant</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div class="p-4 border-t border-stone-100">
+                <button onclick="app.logout()" class="w-full flex items-center justify-center lg:justify-start px-2 lg:px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition">
+                    <span>↪️</span>
+                    <span class="ml-3 font-medium hidden lg:block">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MOBILE HEADER -->
+        <div class="md:hidden fixed top-0 w-full bg-white z-40 border-b border-stone-200 h-16 flex items-center justify-between px-4">
+            <span class="text-xl font-bold text-sage-700">HealthBot</span>
+            <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="text-stone-600 p-2">
+                ☰
+            </button>
+        </div>
+        <!-- MOBILE MENU -->
+        <div id="mobile-menu" class="hidden fixed inset-0 z-50 bg-white pt-20 px-4 space-y-4 md:hidden">
+            <button onclick="app.nav('dashboard'); document.getElementById('mobile-menu').classList.add('hidden')" class="w-full text-left py-3 border-b border-stone-100 text-lg">📊 Dashboard</button>
+            <button onclick="app.nav('chat'); document.getElementById('mobile-menu').classList.add('hidden')" class="w-full text-left py-3 border-b border-stone-100 text-lg">💬 Health Assistant</button>
+            <button onclick="app.logout()" class="w-full text-left py-3 text-red-500 text-lg">↪️ Logout</button>
+            <button onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="absolute top-4 right-4 text-2xl">✕</button>
+        </div>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 overflow-y-auto bg-stone-50 p-4 lg:p-8 pt-20 md:pt-8 relative">
+            
+            <!-- VIEW: DASHBOARD -->
+            <section id="view-dashboard" class="space-y-6 fade-in max-w-7xl mx-auto">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-stone-800">Welcome Back, Student</h2>
+                        <p class="text-stone-500">Here's your wellness overview for the semester.</p>
+                    </div>
+                    <div class="mt-4 md:mt-0 flex gap-2">
+                        <span class="px-3 py-1 bg-sage-100 text-sage-700 rounded-full text-sm font-medium">Week 8</span>
+                        <span class="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">Exam Period</span>
+                    </div>
+                </div>
+
+                <!-- Introduction to Dashboard -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <p class="text-stone-600 leading-relaxed">
+                        This dashboard aggregates your self-reported health metrics. Use the charts below to monitor your sleep patterns, stress levels relative to study load, and overall wellness balance.
+                    </p>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Card 1 -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-stone-400 font-medium">Sleep Avg</span>
+                            <span class="text-indigo-500">🌙</span>
+                        </div>
+                        <div class="text-2xl font-bold text-stone-800">6.2 hrs</div>
+                        <div class="text-xs text-orange-500 font-medium mt-1">↓ 12% vs last week</div>
+                    </div>
+                    <!-- Card 2 -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-stone-400 font-medium">Hydration</span>
+                            <span class="text-blue-500">💧</span>
+                        </div>
+                        <div class="text-2xl font-bold text-stone-800">1.5 L</div>
+                        <div class="w-full bg-stone-100 rounded-full h-2 mt-2">
+                            <div class="bg-blue-400 h-2 rounded-full" style="width: 60%"></div>
+                        </div>
+                    </div>
+                    <!-- Card 3 -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-stone-400 font-medium">Steps</span>
+                            <span class="text-green-500">👣</span>
+                        </div>
+                        <div class="text-2xl font-bold text-stone-800">4,230</div>
+                        <div class="text-xs text-stone-400 font-medium mt-1">Goal: 8,000</div>
+                    </div>
+                    <!-- Card 4 -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-100 cursor-pointer hover:shadow-md transition" onclick="app.nav('chat')">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-stone-400 font-medium">Mood</span>
+                            <span class="text-yellow-500">😊</span>
+                        </div>
+                        <div class="text-lg font-medium text-stone-600">Feeling Okay</div>
+                        <div class="text-xs text-sage-600 font-medium mt-1">Tap to log →</div>
+                    </div>
+                </div>
+
+                <!-- Charts Area -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Chart 1: Stress vs Sleep -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col">
+                        <h3 class="text-lg font-semibold text-stone-800 mb-4">Sleep vs. Study Stress</h3>
+                        <div class="flex-grow w-full">
+                            <div class="chart-container">
+                                <canvas id="sleepStressChart"></canvas>
+                            </div>
+                        </div>
+                        <p class="text-xs text-stone-400 mt-4 text-center">Correlation between hours studied and sleep quality.</p>
+                    </div>
+
+                    <!-- Chart 2: Wellness Radar -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col">
+                        <h3 class="text-lg font-semibold text-stone-800 mb-4">Wellness Balance</h3>
+                        <div class="flex-grow w-full">
+                            <div class="chart-container">
+                                <canvas id="wellnessRadarChart"></canvas>
+                            </div>
+                        </div>
+                        <p class="text-xs text-stone-400 mt-4 text-center">Your 5 dimensions of wellness this week.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: CHAT BOT -->
+            <section id="view-chat" class="hidden h-[calc(100vh-8rem)] flex flex-col max-w-4xl mx-auto bg-white rounded-xl shadow-lg border border-stone-200 overflow-hidden fade-in">
+                <!-- Chat Header -->
+                <div class="bg-sage-600 p-4 flex items-center justify-between">
+                    <div class="flex items-center text-white">
+                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl mr-3">🤖</div>
+                        <div>
+                            <h3 class="font-bold">HealthBot Assistant</h3>
+                            <div class="flex items-center text-xs text-sage-100">
+                                <span class="w-2 h-2 bg-green-400 rounded-full mr-1"></span> Online
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="app.clearChat()" class="text-sage-100 hover:text-white text-sm hover:underline">Clear History</button>
+                </div>
+
+                <!-- Chat Messages Area -->
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-stone-50">
+                    <!-- Introduction Message -->
+                    <div class="flex justify-start">
+                        <div class="bg-white border border-stone-200 text-stone-700 px-4 py-3 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-sm max-w-[80%]">
+                            <p>Hi! I'm your Student Health Bot. I can help with stress, sleep advice, and basic health questions.</p>
+                            <div class="mt-2 text-xs bg-orange-50 text-orange-800 p-2 rounded border border-orange-100">
+                                <strong>Safety Notice:</strong> I am an AI, not a doctor. If this is an emergency, please call 100 immediately.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="p-4 bg-white border-t border-stone-100">
+                    <div class="flex gap-2">
+                        <input type="text" id="chat-input" placeholder="Type your health question here..." class="flex-1 px-4 py-3 rounded-lg border border-stone-300 focus:ring-2 focus:ring-sage-500 outline-none bg-stone-50" onkeypress="if(event.key === 'Enter') app.sendMessage()">
+                        <button onclick="app.sendMessage()" class="bg-sage-600 hover:bg-sage-700 text-white px-6 py-3 rounded-lg font-medium transition shadow-sm">
+                            Send
+                        </button>
+                    </div>
+                    <div class="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
+                        <button onclick="app.quickAsk('I feel stressed')" class="whitespace-nowrap px-3 py-1 bg-stone-100 text-stone-600 rounded-full text-xs hover:bg-sage-100 hover:text-sage-700 transition border border-stone-200">😰 I feel stressed</button>
+                        <button onclick="app.quickAsk('Can\'t sleep')" class="whitespace-nowrap px-3 py-1 bg-stone-100 text-stone-600 rounded-full text-xs hover:bg-sage-100 hover:text-sage-700 transition border border-stone-200">😴 Can't sleep</button>
+                        <button onclick="app.quickAsk('Headache tips')" class="whitespace-nowrap px-3 py-1 bg-stone-100 text-stone-600 rounded-full text-xs hover:bg-sage-100 hover:text-sage-700 transition border border-stone-200">🤕 Headache tips</button>
+                        <button onclick="app.quickAsk('Healthy snacks')" class="whitespace-nowrap px-3 py-1 bg-stone-100 text-stone-600 rounded-full text-xs hover:bg-sage-100 hover:text-sage-700 transition border border-stone-200">🍎 Healthy snacks</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- State Management ---
+        const state = {
+            isLoggedIn: false,
+            currentView: 'dashboard', 
+            user: { name: 'Student', email: '' },
+            data: {
+                sleep: [7.5, 7.0, 6.5, 5.0, 6.0, 5.5, 8.0],
+                stress: [3, 4, 5, 8, 7, 6, 2],
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            },
+            charts: {}
+        };
+
+        // --- Application Logic ---
+        const app = {
+            init: function() {
+                this.updateUI();
+            },
+
+            // Auth Functions
+            login: function() {
+                const email = document.getElementById('login-email').value;
+                if(email) {
+                    state.isLoggedIn = true;
+                    state.user.email = email;
+                    document.getElementById('login-view').classList.add('opacity-0', 'pointer-events-none');
+                    setTimeout(() => {
+                        document.getElementById('login-view').classList.add('hidden');
+                        document.getElementById('app-view').classList.remove('hidden');
+                        this.initCharts();
+                    }, 500);
+                }
+            },
+
+            logout: function() {
+                state.isLoggedIn = false;
+                document.getElementById('app-view').classList.add('hidden');
+                document.getElementById('login-view').classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+                this.nav('dashboard');
+                if (state.charts.sleep) state.charts.sleep.destroy();
+                if (state.charts.radar) state.charts.radar.destroy();
+                this.clearChat();
+            },
+
+            // Navigation
+            nav: function(viewName) {
+                // Resources is removed, only Dashboard and Chat remain
+                ['dashboard', 'chat'].forEach(v => {
+                    document.getElementById(`view-${v}`).classList.add('hidden');
+                    const btn = document.getElementById(`nav-${v}`);
+                    if(btn) {
+                        btn.classList.remove('bg-sage-100', 'text-sage-700');
+                        btn.classList.add('text-stone-600');
+                    }
+                });
+                
+                const targetView = document.getElementById(`view-${viewName}`);
+                if (targetView) targetView.classList.remove('hidden');
+                
+                const activeBtn = document.getElementById(`nav-${viewName}`);
+                if(activeBtn) {
+                    activeBtn.classList.add('bg-sage-100', 'text-sage-700');
+                    activeBtn.classList.remove('text-stone-600');
+                }
+                
+                if (viewName === 'chat') {
+                    setTimeout(() => {
+                        const chatContainer = document.getElementById('chat-messages');
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }, 100);
+                }
+            },
+
+            // Chart Generation
+            initCharts: function() {
+                setTimeout(() => {
+                    this.renderSleepChart();
+                    this.renderRadarChart();
+                }, 100);
+            },
+
+            renderSleepChart: function() {
+                const ctx = document.getElementById('sleepStressChart').getContext('2d');
+                state.charts.sleep = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: state.data.labels,
+                        datasets: [
+                            {
+                                label: 'Sleep Hours',
+                                data: state.data.sleep,
+                                backgroundColor: '#84a98c',
+                                borderRadius: 6,
+                                yAxisID: 'y',
+                                order: 2
+                            },
+                            {
+                                type: 'line',
+                                label: 'Stress Level (1-10)',
+                                data: state.data.stress,
+                                borderColor: '#f97316',
+                                backgroundColor: '#f97316',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                yAxisID: 'y1',
+                                order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            y: { position: 'left', title: { display: true, text: 'Hours' }, grid: { color: '#f5f5f4' } },
+                            y1: { position: 'right', title: { display: true, text: 'Stress Level' }, min: 0, max: 10, grid: { drawOnChartArea: false } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            },
+
+            renderRadarChart: function() {
+                const ctx = document.getElementById('wellnessRadarChart').getContext('2d');
+                state.charts.radar = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Physical', 'Mental', 'Social', 'Sleep', 'Nutrition'],
+                        datasets: [{
+                            label: 'Current Status',
+                            data: [8, 6, 5, 4, 7],
+                            fill: true,
+                            backgroundColor: 'rgba(132, 169, 140, 0.2)',
+                            borderColor: '#52796f',
+                            pointBackgroundColor: '#52796f',
+                            pointBorderColor: '#fff'
+                        }, {
+                            label: 'Ideal Goal',
+                            data: [8, 8, 8, 8, 8],
+                            fill: true,
+                            backgroundColor: 'rgba(200, 200, 200, 0.05)',
+                            borderColor: '#e7e5e4',
+                            pointRadius: 0,
+                            borderDash: [5, 5]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                angleLines: { color: '#e7e5e4' },
+                                grid: { color: '#e7e5e4' },
+                                ticks: { display: false },
+                                min: 0, max: 10
+                            }
+                        }
+                    }
+                });
+            },
+
+            // --- Chat Logic ---
+            quickAsk: function(text) {
+                document.getElementById('chat-input').value = text;
+                this.sendMessage();
+            },
+
+            // --- SAFETY LAYER (RULE ENGINE) ---
+            // This runs BEFORE any AI processing.
+            // Why: To prevent the bot from giving casual advice in life-threatening situations.
+            evaluateSafety: function(input) {
+                const lower = input.toLowerCase();
+                
+                // Rule Set 1: Immediate Self-Harm Risk
+                const selfHarmKeywords = ['die', 'suicide', 'kill myself', 'end it all', 'hurt myself', 'don\'t want to live'];
+                if (selfHarmKeywords.some(keyword => lower.includes(keyword))) {
+                    return {
+                        isEmergency: true,
+                        type: 'CRITICAL',
+                        message: "<strong>You are not alone.</strong><br>I am an AI and cannot provide the help you need right now.<br><br>Please contact these crisis resources immediately:<br>• <strong>Crisis Lifeline:</strong> Call or text 988<br>• <strong>Campus Counseling:</strong> 555-0199<br>• <strong>Emergency Services:</strong> 911"
+                    };
+                }
+
+                // Rule Set 2: Medical Emergencies
+                const medicalKeywords = ['bleeding', 'unconscious', 'chest pain', 'heart attack', 'stroke', 'can\'t breathe', 'difficulty breathing', 'severe pain', 'collapsed'];
+                if (medicalKeywords.some(keyword => lower.includes(keyword))) {
+                    return {
+                        isEmergency: true,
+                        type: 'MEDICAL',
+                        message: "<strong>MEDICAL EMERGENCY DETECTED</strong><br>This sounds like a serious medical situation.<br><br><strong>STOP using this app and:</strong><br>1. Call <strong>911</strong> immediately.<br>2. Call Campus Security at 555-0100."
+                    };
+                }
+
+                // Rule Set 3: Abuse/Violence
+                const abuseKeywords = ['rape', 'assault', 'abuse', 'hit me', 'forced me', 'scared of him', 'scared of her'];
+                if (abuseKeywords.some(keyword => lower.includes(keyword))) {
+                    return {
+                        isEmergency: true,
+                        type: 'SAFETY',
+                        message: "<strong>Your safety is the priority.</strong><br>If you are in immediate danger, please call 911.<br><br>For confidential support regarding assault or abuse, please visit the Campus Health Center or call the confidential hotline at 555-SAFE."
+                    };
+                }
+
+                return null; // No threats detected
+            },
+
+            sendMessage: function() {
+                const input = document.getElementById('chat-input');
+                const text = input.value.trim();
+                if(!text) return;
+
+                this.appendMessage('user', text);
+                input.value = '';
+
+                // --- LAYER 1: SAFETY CHECK ---
+                // This intercepts the flow before the "typing" indicator or bot logic starts.
+                const safetyResult = this.evaluateSafety(text);
+
+                if (safetyResult && safetyResult.isEmergency) {
+                    // STOP AI. Show Emergency Message immediately.
+                    this.appendMessage('emergency', safetyResult.message);
+                    return; // EXIT FUNCTION
+                }
+
+                // --- LAYER 2: STANDARD BOT RESPONSE ---
+                // Only runs if Safety Check passed.
+                this.showTypingIndicator();
+
+                setTimeout(() => {
+                    this.removeTypingIndicator();
+                    const response = this.getBotResponse(text);
+                    this.appendMessage('bot', response); 
+                }, 1000 + Math.random() * 500);
+            },
+
+            appendMessage: function(sender, content) {
+                const container = document.getElementById('chat-messages');
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `flex slide-in`;
+                
+                let bubbleClass = '';
+                let innerContent = '';
+
+                if (sender === 'user') {
+                    msgDiv.classList.add('justify-end');
+                    bubbleClass = 'bg-sage-600 text-white px-4 py-3 rounded-tl-xl rounded-tr-xl rounded-bl-xl shadow-sm max-w-[85%]';
+                    innerContent = content;
+                } else if (sender === 'emergency') {
+                    msgDiv.classList.add('justify-start');
+                    // Special Red Styling for Emergencies
+                    bubbleClass = 'bg-danger-50 border-l-4 border-danger-600 text-stone-800 px-4 py-4 rounded-r-xl rounded-bl-xl shadow-md max-w-[90%] w-full';
+                    innerContent = `<div class="flex items-start"><span class="text-2xl mr-3">🚨</span><div>${content}</div></div>`;
+                } else {
+                    // Bot
+                    msgDiv.classList.add('justify-start');
+                    bubbleClass = 'bg-white border border-stone-200 text-stone-700 px-4 py-3 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-sm max-w-[85%]';
+                }
+
+                const bubble = document.createElement('div');
+                bubble.className = bubbleClass;
+
+                // Handle Standard Bot Response Object (Text + Charts)
+                if (sender === 'bot' && typeof content === 'object' && content !== null) {
+                    bubble.innerHTML = content.text;
+                    if (content.chart) {
+                        const chartId = 'chat-chart-' + Date.now();
+                        const chartWrapper = document.createElement('div');
+                        chartWrapper.className = 'mt-4 bg-stone-50 p-3 rounded-lg border border-stone-100';
+                        chartWrapper.innerHTML = `
+                            <p class="text-xs font-bold text-center text-stone-500 mb-2 uppercase tracking-wide">${content.chart.title}</p>
+                            <div class="chat-chart-wrapper">
+                                <canvas id="${chartId}"></canvas>
+                            </div>
+                        `;
+                        bubble.appendChild(chartWrapper);
+                        
+                        setTimeout(() => {
+                            new Chart(document.getElementById(chartId), {
+                                type: 'pie',
+                                data: {
+                                    labels: content.chart.labels,
+                                    datasets: [{
+                                        data: content.chart.data,
+                                        backgroundColor: ['#84a98c', '#e7e5e4', '#57534e', '#f97316', '#a8a29e'],
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position: 'right',
+                                            labels: { boxWidth: 10, font: { size: 10 } }
+                                        }
+                                    }
+                                }
+                            });
+                        }, 50);
+                    }
+                } else if (sender === 'emergency') {
+                    // Emergency Content (HTML string)
+                    bubble.innerHTML = innerContent;
+                } else {
+                    // User Content (String)
+                    bubble.innerHTML = innerContent;
+                }
+
+                msgDiv.appendChild(bubble);
+                container.appendChild(msgDiv);
+                container.scrollTop = container.scrollHeight;
+            },
+
+            showTypingIndicator: function() {
+                const container = document.getElementById('chat-messages');
+                if(document.getElementById('typing-indicator')) return;
+                const msgDiv = document.createElement('div');
+                msgDiv.id = 'typing-indicator';
+                msgDiv.className = 'flex justify-start fade-in';
+                msgDiv.innerHTML = `
+                    <div class="bg-white border border-stone-200 px-4 py-3 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-sm flex space-x-1 items-center h-10">
+                        <div class="w-2 h-2 bg-stone-400 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                `;
+                container.appendChild(msgDiv);
+                container.scrollTop = container.scrollHeight;
+            },
+
+            removeTypingIndicator: function() {
+                const el = document.getElementById('typing-indicator');
+                if(el) el.remove();
+            },
+
+            clearChat: function() {
+                const container = document.getElementById('chat-messages');
+                container.innerHTML = '';
+                this.appendMessage('bot', { text: "Chat history cleared. How else can I assist you today?" });
+            },
+
+            // --- Enhanced Response Logic with Charts ---
+            getBotResponse: function(input) {
+                const lower = input.toLowerCase();
+                
+                // Response: SLEEP
+                if(lower.includes('sleep') || lower.includes('tired') || lower.includes('insomnia')) {
+                    return {
+                        text: "Sleep is crucial for recovery. I've noticed your average sleep is down 12% this week (see Dashboard). Prioritizing rest tonight might help your focus tomorrow.<br><br>Here is how your peers are sleeping:",
+                        chart: {
+                            type: 'pie',
+                            title: 'Common Student Sleep Issues (Age 18-24)',
+                            labels: ['Difficulty Falling Asleep', 'Waking During Night', 'Waking Too Early', 'No Issues'],
+                            data: [45, 30, 15, 10]
+                        }
+                    };
+                }
+                
+                // Response: STRESS
+                if(lower.includes('stress') || lower.includes('anxiety') || lower.includes('overwhelmed')) {
+                    return {
+                        text: "I hear you. Academic stress is very real. Try Box Breathing (4s in, 4s hold, 4s out).<br><br>You aren't alone; here are the top stressors reported by students:",
+                        chart: {
+                            type: 'pie',
+                            title: 'Top Stress Triggers in Students',
+                            labels: ['Exams/Grades', 'Finances', 'Social/Relationships', 'Future Career', 'Health'],
+                            data: [40, 20, 15, 15, 10]
+                        }
+                    };
+                }
+
+                // Response: HEADACHE
+                if(lower.includes('headache') || lower.includes('pain')) {
+                    return {
+                        text: "Sorry to hear that. Ensure you are hydrated - dehydration is a common cause of headaches on campus. If it persists, please visit the <b>Campus Clinic</b>.<br><br>Common causes for student headaches:",
+                        chart: {
+                            type: 'pie',
+                            title: 'Primary Headache Causes',
+                            labels: ['Dehydration', 'Screen Strain', 'Lack of Sleep', 'Stress', 'Other'],
+                            data: [35, 25, 20, 15, 5]
+                        }
+                    };
+                }
+
+                // Response: FOOD
+                if(lower.includes('food') || lower.includes('snack') || lower.includes('diet') || lower.includes('hungry')) {
+                    return {
+                        text: "Brain food is important! Try nuts, yogurt, or fruit instead of vending machine candy.<br><br>Here is a breakdown of what students typically snack on during exam week:",
+                        chart: {
+                            type: 'pie',
+                            title: 'Student Snacking Habits',
+                            labels: ['Energy Drinks/Coffee', 'Chips/Salty', 'Sweets/Chocolate', 'Fruit/Veg', 'Nuts/Protein'],
+                            data: [30, 25, 20, 15, 10]
+                        }
+                    };
+                }
+
+                // Default Responses
+                if(lower.includes('hello') || lower.includes('hi')) {
+                    return { text: "Hello! I'm here to support your wellness journey. Ask me about sleep, stress, or headaches to see what I can do!" };
+                }
+
+                return { text: "That's a good question. While I'm just a bot, I recommend checking the <b>Dashboard</b> for your stats, or rephrasing your question if it's about sleep, stress, headaches, or diet." };
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+             // App ready
+        });
+    </script>
+</body>
+</html>
